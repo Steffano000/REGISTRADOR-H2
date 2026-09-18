@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Registrador H2</title>
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --surface-2:#eef0f3; --border:#d9dde3;
+  --ink:#14181d; --ink-2:#4a535e; --ink-3:#79838f;
+  --accent:#1f6fd0; --accent-soft:#e3edfa;
+  --ok:#1b7f4b; --warn:#9a6700; --bad:#b3261e;
+  --grid:#e6e9ee;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --bg:#0f1216; --surface:#171b21; --surface-2:#1f242b; --border:#2c333c;
+    --ink:#e9edf2; --ink-2:#a6b0bc; --ink-3:#77828f;
+    --accent:#63a7f5; --accent-soft:#1b2a3d;
+    --ok:#4cc38a; --warn:#d9a441; --bad:#f2705f;
+    --grid:#242a32;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --surface:#171b21; --surface-2:#1f242b; --border:#2c333c;
+  --ink:#e9edf2; --ink-2:#a6b0bc; --ink-3:#77828f;
+  --accent:#63a7f5; --accent-soft:#1b2a3d;
+  --ok:#4cc38a; --warn:#d9a441; --bad:#f2705f;
+  --grid:#242a32;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:0 16px 64px;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1100px;margin:0 auto}
+header{
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  padding:18px 0 14px;
+}
+h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
+h1 small{display:block;font-weight:400;font-size:12px;color:var(--ink-3);letter-spacing:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{
+  font:inherit;font-size:14px;font-weight:550;
+  background:var(--surface);color:var(--ink);
+  border:1px solid var(--border);border-radius:9px;
+  padding:9px 14px;cursor:pointer;
+  min-height:40px;
+}
+button:hover:not(:disabled){border-color:var(--ink-3)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover:not(:disabled){filter:brightness(1.08)}
+button.ghost{background:transparent}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:550;
+  padding:6px 11px;border-radius:999px;
+  background:var(--surface-2);color:var(--ink-2);border:1px solid var(--border);
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
+.dot.on{background:var(--ok)}
+.dot.off{background:var(--bad)}
+.dot.demo{background:var(--warn)}
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:13px;padding:16px;margin-bottom:14px;
+}
+.card h2{font-size:13px;margin:0 0 12px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
+.banner{
+  border-radius:11px;padding:12px 14px;font-size:13.5px;line-height:1.5;
+  border:1px solid var(--border);background:var(--surface-2);margin-bottom:14px;
+}
+.banner.bad{border-color:var(--bad);background:transparent;color:var(--bad)}
+.banner.warn{border-color:var(--warn);background:transparent;color:var(--warn)}
+.banner b{font-weight:650}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{
+  background:var(--surface-2);border:1px solid var(--border);
+  border-radius:11px;padding:13px 14px;
+}
+.tile .k{font-size:11.5px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .v{font:600 25px/1.15 var(--mono);margin-top:5px;letter-spacing:-.02em;word-break:break-all}
+.tile .u{font-size:12px;color:var(--ink-3);font-weight:500}
+.tile.calc{background:transparent;border-style:dashed}
+.grid-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.chart{border:1px solid var(--border);border-radius:11px;padding:11px 8px 4px;background:var(--surface)}
+.chart .t{font-size:12.5px;font-weight:600;color:var(--ink-2);padding:0 6px 4px;display:flex;justify-content:space-between;gap:8px}
+.chart .t span{font:600 12.5px var(--mono);color:var(--ink)}
+canvas{width:100%;height:118px;display:block;touch-action:none}
+label{font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:5px;font-weight:500}
+select,input[type=text],input[type=number]{
+  font:inherit;font-size:14px;padding:8px 10px;min-height:40px;
+  background:var(--surface);color:var(--ink);
+  border:1px solid var(--border);border-radius:9px;width:100%;
+}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.tablewrap{overflow:auto;max-height:340px;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;font:12.5px/1.4 var(--mono)}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+th{position:sticky;top:0;background:var(--surface-2);color:var(--ink-2);font-weight:600;z-index:1;text-align:right}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:none}
+.muted{color:var(--ink-3);font-size:13px}
+.chrono{font:600 22px var(--mono);letter-spacing:-.02em}
+details summary{cursor:pointer;font-size:13px;color:var(--ink-2);font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--ink-3)}
+details[open] summary::before{content:"▾ "}
+details[open] summary{margin-bottom:12px}
+#tip{
+  position:fixed;pointer-events:none;z-index:50;display:none;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:6px 9px;font:12px var(--mono);color:var(--ink);
+  box-shadow:0 4px 14px rgba(0,0,0,.18);white-space:nowrap;
+}
+@media (max-width:520px){
+  h1{font-size:17px}
+  .tile .v{font-size:21px}
+  body{padding:0 12px 56px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Registrador H₂<small>Electrolizador ESP32 · Web Bluetooth</small></h1>
+  <div class="row">
+    <span class="pill"><span class="dot off" id="dot"></span><span id="status">Desconectado</span></span>
+    <button class="ghost" id="btnTheme" title="Cambiar tema">◐</button>
+  </div>
+</header>
+
+<div id="support"></div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between">
+    <div class="row">
+      <button class="primary" id="btnConnect">Conectar Bluetooth</button>
+      <button id="btnDisconnect" disabled>Desconectar</button>
+      <button class="ghost" id="btnDemo">Modo demo</button>
+    </div>
+    <div class="row">
+      <span class="chrono" id="chrono">00:00:00</span>
+      <span class="muted" id="count">0 muestras</span>
+    </div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="primary" id="btnStart">Iniciar ensayo</button>
+    <button id="btnPause" disabled>Pausar</button>
+    <button id="btnReset" disabled>Reiniciar</button>
+    <button id="btnCsv" disabled>Exportar CSV</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Lecturas en vivo</h2>
+  <div class="grid-cards" id="tiles"><div class="muted">Sin datos todavía.</div></div>
+</div>
+
+<div class="card">
+  <h2>Calculado por Faraday · independiente del sensor MQ-8</h2>
+  <div class="grid-cards" id="calcTiles"></div>
+  <p class="muted" style="margin:12px 0 0">
+    Derivado únicamente de la corriente integrada: <b>Q = ∫I·dt</b>, <b>n = Q/(2·96485)</b>,
+    <b>V = n·22414 mL/mol</b>. El ppm del MQ-8 se registra tal cual y no entra en estos cálculos.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Series temporales</h2>
+  <div class="row" style="margin-bottom:12px">
+    <label style="max-width:180px">Ventana
+      <select id="window">
+        <option value="60">1 minuto</option>
+        <option value="300" selected>5 minutos</option>
+        <option value="900">15 minutos</option>
+        <option value="0">Todo el ensayo</option>
+      </select>
+    </label>
+  </div>
+  <div class="grid-charts" id="charts"><div class="muted">Sin datos todavía.</div></div>
+</div>
+
+<div class="card">
+  <details>
+    <summary>Mapeo de campos y configuración</summary>
+    <div class="fields">
+      <label>Campo de corriente (A)
+        <select id="mapI"><option value="">— sin asignar —</option></select>
+      </label>
+      <label>Campo de voltaje (V)
+        <select id="mapV"><option value="">— sin asignar —</option></select>
+      </label>
+      <label>Separador CSV
+        <select id="sep">
+          <option value=";" selected>Punto y coma ( ; )</option>
+          <option value=",">Coma ( , )</option>
+          <option value="&#9;">Tabulación</option>
+        </select>
+      </label>
+      <label>Separador decimal
+        <select id="dec">
+          <option value="," selected>Coma ( 1,25 )</option>
+          <option value=".">Punto ( 1.25 )</option>
+        </select>
+      </label>
+      <label style="grid-column:1/-1">Nota del ensayo (va en la cabecera del CSV)
+        <input type="text" id="note" placeholder="Ej.: electrodos inox 316, KOH 1M, 25 °C">
+      </label>
+    </div>
+    <p class="muted" style="margin:14px 0 0">
+      Los campos se detectan solos del JSON que envía el ESP32. Corrígelos aquí si la
+      detección automática se equivocó: solo la corriente y el voltaje se usan para los
+      acumuladores; todo lo demás se registra y exporta igual.
+    </p>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Registro <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">— últimas 200 filas</span></h2>
+  <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<p class="muted" style="text-align:center">
+  Los datos viven solo en memoria. Exporta el CSV antes de cerrar o recargar la página.
+</p>
+</div>
+<div id="tip"></div>
+
+<script>
+"use strict";
+const SERVICE_UUID = "6a2f8e10-27c0-4a1e-9c3d-0f1b6a4b9a01";
+const CHAR_TELEM   = "6a2f8e11-27c0-4a1e-9c3d-0f1b6a4b9a01";
+const DEVICE_NAME  = "ElectrolizadorH2";
+const F_CONST = 96485.33212;   // C/mol
+const V_MOLAR = 22413.96;      // mL/mol en condiciones normales
+const Z_H2 = 2;                // electrones por molécula de H2
+
+const $ = id => document.getElementById(id);
+
+const S = {
+  device:null, char:null, mode:null,      // 'ble' | 'demo' | null
+  running:false, startedAt:0, accumMs:0, lastResume:0,
+  records:[], keys:[], units:{},
+  mapI:"", mapV:"", autoMapped:false,
+  prev:null, Q:0, E:0,
+  buffer:"", demoTimer:null, chrTimer:null, dirty:false
+};
+
+/* ───────── utilidades ───────── */
+const nf = (x,d=3) => (x==null||!isFinite(x)) ? "—" :
+  (Math.abs(x)>=1000 ? x.toFixed(1) : Math.abs(x)>=1 ? x.toFixed(d) : x.toPrecision(3));
+const pad2 = n => String(n).padStart(2,"0");
+function hhmmss(ms){
+  const s=Math.max(0,Math.floor(ms/1000));
+  return pad2(Math.floor(s/3600))+":"+pad2(Math.floor(s/60)%60)+":"+pad2(s%60);
+}
+function elapsedMs(){
+  return S.accumMs + (S.running ? Date.now()-S.lastResume : 0);
+}
+function setStatus(txt, cls){
+  $("status").textContent = txt;
+  $("dot").className = "dot "+(cls||"");
+}
+function banner(html, kind){
+  $("support").innerHTML = html ? `<div class="banner ${kind||""}">${html}</div>` : "";
+}
+
+/* Unidad probable a partir del nombre del campo. */
+function guessUnit(k){
+  const s=k.toLowerCase();
+  if(/ppm/.test(s)) return "ppm";
+  if(/volt|tension|tensión/.test(s)) return "V";
+  if(/corr|amp|current/.test(s)) return "A";
+  if(/poten|watt|power/.test(s)) return "W";
+  if(/temp/.test(s)) return "°C";
+  if(/(^|_)(ml|volumen|vol)($|_)/.test(s)) return "mL";
+  if(/ohm|^rs$|resist/.test(s)) return "Ω";
+  return "";
+}
+
+/* ───────── reensamblado de notificaciones BLE ─────────
+   La MTU por defecto de BLE deja ~20 bytes útiles: un JSON de telemetría llega
+   partido en varias notificaciones. Acumulamos y extraemos objetos completos
+   contando llaves (ignorando las que estén dentro de cadenas). */
+function feed(text){
+  S.buffer += text;
+  if(S.buffer.length > 8192) S.buffer = S.buffer.slice(-8192);
+  let out;
+  while((out = extractObject(S.buffer)) !== null){
+    S.buffer = S.buffer.slice(out.end);
+    try{ onPacket(JSON.parse(out.json)); }
+    catch(e){ /* objeto malformado: se descarta y se sigue */ }
+  }
+}
+function extractObject(buf){
+  const start = buf.indexOf("{");
+  if(start < 0) return null;
+  let depth=0, inStr=false, esc=false;
+  for(let i=start;i<buf.length;i++){
+    const c=buf[i];
+    if(esc){ esc=false; continue; }
+    if(c==="\\" && inStr){ esc=true; continue; }
+    if(c==='"'){ inStr=!inStr; continue; }
+    if(inStr) continue;
+    if(c==="{") depth++;
+    else if(c==="}"){
+      depth--;
+      if(depth===0) return {json:buf.slice(start,i+1), end:i+1};
+    }
+  }
+  return null;
+}
+
+/* ───────── ingesta de un paquete ───────── */
+function flatten(obj, prefix, out){
+  out = out || {};
+  for(const k in obj){
+    const v = obj[k];
+    const key = prefix ? prefix+"_"+k : k;
+    if(v && typeof v === "object" && !Array.isArray(v)) flatten(v, key, out);
+    else out[key] = v;
+  }
+  return out;
+}
+
+function onPacket(raw){
+  const flat = flatten(raw);
+  const data = {};
+  for(const k in flat){
+    const v = flat[k];
+    if(typeof v === "number" && isFinite(v)) data[k]=v;
+    else if(typeof v === "boolean") data[k]= v?1:0;
+    else if(typeof v === "string" && v.trim()!=="" && isFinite(Number(v))) data[k]=Number(v);
+  }
+  // descubrir campos nuevos
+  let nuevos=false;
+  for(const k in data) if(!S.keys.includes(k)){ S.keys.push(k); S.units[k]=guessUnit(k); nuevos=true; }
+  if(nuevos){ rebuildSelects(); autoMap(); rebuildTable(); }
+
+  if(!S.running) return;   // sin sesión activa solo se muestra, no se registra
+
+  const now = Date.now();
+  const t = (now - S.startedAt - 0) / 1000;
+  const tRel = elapsedMs()/1000;
+
+  const I = S.mapI ? (data[S.mapI] ?? 0) : 0;
+  const V = S.mapV ? (data[S.mapV] ?? 0) : 0;
+  const P = V*I;
+
+  if(S.prev){
+    const dt = (tRel - S.prev.t);
+    if(dt > 0 && dt < 30){                       // trapecio, con guarda contra saltos
+      S.Q += (I + S.prev.I)/2 * dt;
+      S.E += (P + S.prev.P)/2 * dt;
+    }
+  }
+  S.prev = {t:tRel, I, P};
+
+  const n = S.Q/(Z_H2*F_CONST);
+  const rec = {
+    iso:new Date(now).toISOString(), t:tRel, data,
+    Q:S.Q, E:S.E, n, vol:n*V_MOLAR, P
+  };
+  S.records.push(rec);
+  S.dirty = true;
+  $("btnCsv").disabled = false;
+  render(rec);
+}
+
+/* ───────── mapeo de campos ───────── */
+function autoMap(){
+  if(S.autoMapped) return;
+  const find = re => S.keys.find(k => re.test(k.toLowerCase()));
+  const i = find(/^i$|corrien|current|amperaj|(^|_)amp/);
+  const v = find(/^v$|voltaj|tension|tensión|voltage/);
+  if(i){ S.mapI=i; $("mapI").value=i; }
+  if(v){ S.mapV=v; $("mapV").value=v; }
+  if(i||v) S.autoMapped = true;
+}
+function rebuildSelects(){
+  for(const [sel,cur] of [["mapI",S.mapI],["mapV",S.mapV]]){
+    const el=$(sel);
+    el.innerHTML='<option value="">— sin asignar —</option>'+
+      S.keys.map(k=>`<option value="${k}">${k}</option>`).join("");
+    el.value=cur;
+  }
+}
+$("mapI").onchange = e => S.mapI = e.target.value;
+$("mapV").onchange = e => S.mapV = e.target.value;
+
+/* ───────── render ───────── */
+function render(rec){
+  const d = rec ? rec.data : (S.records.length? S.records[S.records.length-1].data : null);
+  // tarjetas de lectura
+  if(d){
+    const tiles = $("tiles");
+    if(tiles.dataset.keys !== S.keys.join("|")){
+      tiles.dataset.keys = S.keys.join("|");
+      tiles.innerHTML = S.keys.map(k=>
+        `<div class="tile"><div class="k" title="${k}">${k}</div>
+         <div class="v" id="tv_${cssId(k)}">—</div>
+         <div class="u">${S.units[k]||"&nbsp;"}</div></div>`).join("");
+    }
+    for(const k of S.keys){
+      const el=$("tv_"+cssId(k)); if(el) el.textContent = nf(d[k]);
+    }
+  }
+  // tarjetas calculadas
+  if(rec){
+    $("calcTiles").innerHTML = [
+      ["Carga acumulada", nf(rec.Q,2), "C"],
+      ["Energía", nf(rec.E,1), "J"],
+      ["Energía", nf(rec.E/3600,4), "Wh"],
+      ["H₂ teórico", rec.n.toExponential(3), "mol"],
+      ["H₂ teórico", nf(rec.vol,2), "mL"],
+      ["Potencia", nf(rec.P,3), "W"]
+    ].map(([k,v,u])=>`<div class="tile calc"><div class="k">${k}</div><div class="v">${v}</div><div class="u">${u}</div></div>`).join("");
+  }
+  $("count").textContent = S.records.length.toLocaleString("es")+" muestras";
+  drawAll();
+  appendRow(rec);
+}
+const cssId = k => k.replace(/[^a-zA-Z0-9_]/g,"_");
+
+/* ───────── tabla ───────── */
+function rebuildTable(){
+  $("tbl").tHead.innerHTML = "<tr><th>t (s)</th>"+
+    S.keys.map(k=>`<th>${k}</th>`).join("")+
+    "<th>Q (C)</th><th>H₂ teór. (mL)</th></tr>";
+  const tb=$("tbl").tBodies[0]; tb.innerHTML="";
+  for(const r of S.records.slice(-200)) appendRow(r, true);
+}
+function appendRow(rec, bulk){
+  if(!rec) return;
+  const tb=$("tbl").tBodies[0];
+  const tr=document.createElement("tr");
+  tr.innerHTML = `<td>${rec.t.toFixed(1)}</td>`+
+    S.keys.map(k=>`<td>${nf(rec.data[k])}</td>`).join("")+
+    `<td>${nf(rec.Q,2)}</td><td>${nf(rec.vol,2)}</td>`;
+  tb.insertBefore(tr, tb.firstChild);
+  if(!bulk) while(tb.rows.length>200) tb.deleteRow(tb.rows.length-1);
+}
+
+/* ───────── gráficas (small multiples: una serie por panel, un solo eje) ───────── */
+function windowed(){
+  const w = Number($("window").value);
+  if(!w || !S.records.length) return S.records;
+  const tMax = S.records[S.records.length-1].t;
+  let i = S.records.length-1;
+  while(i>0 && S.records[i].t > tMax-w) i--;
+  return S.records.slice(i);
+}
+let hover = null;
+function drawAll(){
+  const cont = $("charts");
+  if(!S.keys.length){ return; }
+  if(cont.dataset.keys !== S.keys.join("|")){
+    cont.dataset.keys = S.keys.join("|");
+    cont.innerHTML = S.keys.map(k=>
+      `<div class="chart"><div class="t"><span style="font-weight:600;color:var(--ink-2)">${k} ${S.units[k]?"("+S.units[k]+")":""}</span><span id="cv_${cssId(k)}">—</span></div>
+       <canvas id="c_${cssId(k)}" data-key="${k}"></canvas></div>`).join("");
+    cont.querySelectorAll("canvas").forEach(cv=>{
+      cv.addEventListener("pointermove", onHover);
+      cv.addEventListener("pointerleave", ()=>{ hover=null; $("tip").style.display="none"; drawAll(); });
+    });
+  }
+  const rows = windowed();
+  for(const k of S.keys){
+    const cv=$("c_"+cssId(k)); if(!cv) continue;
+    const pts = rows.map(r=>({x:r.t, y:r.data[k]})).filter(p=>typeof p.y==="number"&&isFinite(p.y));
+    drawChart(cv, pts, k);
+    const lbl=$("cv_"+cssId(k));
+    if(lbl) lbl.textContent = pts.length ? nf(pts[pts.length-1].y) : "—";
+  }
+}
+function css(v){ return getComputedStyle(document.body).getPropertyValue(v).trim(); }
+function drawChart(cv, pts, key){
+  const dpr = window.devicePixelRatio||1;
+  const w = cv.clientWidth || 280, h = cv.clientHeight || 118;
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  }
+  const g = cv.getContext("2d");
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  const PL=46,PR=10,PT=8,PB=18;
+  const iw=w-PL-PR, ih=h-PT-PB;
+  const gridC=css("--grid"), inkC=css("--ink-3"), accC=css("--accent");
+
+  if(pts.length<1){
+    g.fillStyle=inkC; g.font="12px system-ui"; g.textAlign="center";
+    g.fillText("sin datos", w/2, h/2); return;
+  }
+  let yMin=Infinity,yMax=-Infinity;
+  for(const p of pts){ if(p.y<yMin)yMin=p.y; if(p.y>yMax)yMax=p.y; }
+  if(yMin===yMax){ yMin-=1; yMax+=1; }
+  const pad=(yMax-yMin)*0.12; yMin-=pad; yMax+=pad;
+  const xMin=pts[0].x, xMax=Math.max(pts[pts.length-1].x, xMin+1);
+  const X = x => PL + (x-xMin)/(xMax-xMin)*iw;
+  const Y = y => PT + ih - (y-yMin)/(yMax-yMin)*ih;
+
+  // rejilla recesiva + rótulos del eje
+  g.strokeStyle=gridC; g.lineWidth=1;
+  g.fillStyle=inkC; g.font="10.5px "+"ui-monospace,Menlo,monospace"; g.textAlign="right"; g.textBaseline="middle";
+  for(let i=0;i<=2;i++){
+    const val = yMin + (yMax-yMin)*i/2, y=Math.round(Y(val))+0.5;
+    g.beginPath(); g.moveTo(PL,y); g.lineTo(w-PR,y); g.stroke();
+    g.fillText(nf(val,2), PL-6, y);
+  }
+  g.textAlign="left"; g.textBaseline="alphabetic";
+  g.fillText(pts[0].x.toFixed(0)+"s", PL, h-5);
+  g.textAlign="right";
+  g.fillText(pts[pts.length-1].x.toFixed(0)+"s", w-PR, h-5);
+
+  // línea 2px
+  g.strokeStyle=accC; g.lineWidth=2; g.lineJoin="round"; g.lineCap="round";
+  g.beginPath();
+  pts.forEach((p,i)=> i? g.lineTo(X(p.x),Y(p.y)) : g.moveTo(X(p.x),Y(p.y)));
+  g.stroke();
+
+  // punto final ≥8px con anillo de superficie
+  const last=pts[pts.length-1];
+  g.fillStyle=accC; g.beginPath(); g.arc(X(last.x),Y(last.y),4,0,7); g.fill();
+  g.strokeStyle=css("--surface"); g.lineWidth=2; g.stroke();
+
+  // crosshair
+  if(hover && hover.key===key && hover.pt){
+    const hx=X(hover.pt.x);
+    g.strokeStyle=inkC; g.lineWidth=1; g.setLineDash([3,3]);
+    g.beginPath(); g.moveTo(hx,PT); g.lineTo(hx,PT+ih); g.stroke(); g.setLineDash([]);
+    g.fillStyle=accC; g.beginPath(); g.arc(hx,Y(hover.pt.y),4.5,0,7); g.fill();
+    g.strokeStyle=css("--surface"); g.lineWidth=2; g.stroke();
+  }
+  cv._scale = {X,Y,xMin,xMax,pts};
+}
+function onHover(ev){
+  const cv=ev.currentTarget, sc=cv._scale;
+  if(!sc||!sc.pts.length) return;
+  const r=cv.getBoundingClientRect();
+  const x=ev.clientX-r.left;
+  let best=sc.pts[0], bd=Infinity;
+  for(const p of sc.pts){ const d=Math.abs(sc.X(p.x)-x); if(d<bd){bd=d;best=p;} }
+  hover={key:cv.dataset.key, pt:best};
+  const tip=$("tip");
+  tip.textContent = `t=${best.x.toFixed(1)}s · ${nf(best.y)} ${S.units[cv.dataset.key]||""}`;
+  tip.style.display="block";
+  tip.style.left = Math.min(window.innerWidth-tip.offsetWidth-8, ev.clientX+12)+"px";
+  tip.style.top  = Math.max(8, ev.clientY-34)+"px";
+  drawAll();
+}
+$("window").onchange = drawAll;
+window.addEventListener("resize", ()=>{ $("charts").dataset.keys=""; drawAll(); });
+
+/* ───────── sesión ───────── */
+function startSession(){
+  if(S.running) return;
+  if(!S.records.length){ S.startedAt=Date.now(); }
+  S.running=true; S.lastResume=Date.now();
+  $("btnStart").disabled=true; $("btnPause").disabled=false; $("btnReset").disabled=false;
+  $("btnPause").textContent="Pausar";
+  S.chrTimer = S.chrTimer || setInterval(()=>{ $("chrono").textContent=hhmmss(elapsedMs()); },250);
+}
+function pauseSession(){
+  if(!S.running) return;
+  S.accumMs += Date.now()-S.lastResume;
+  S.running=false; S.prev=null;
+  $("btnStart").disabled=false; $("btnStart").textContent="Reanudar";
+}
+function resetSession(){
+  if(S.dirty && !confirm("Hay datos sin exportar. ¿Reiniciar el ensayo y borrarlos?")) return;
+  S.running=false; S.accumMs=0; S.records=[]; S.Q=0; S.E=0; S.prev=null; S.dirty=false;
+  $("chrono").textContent="00:00:00"; $("count").textContent="0 muestras";
+  $("btnStart").disabled=false; $("btnStart").textContent="Iniciar ensayo";
+  $("btnPause").disabled=true; $("btnReset").disabled=true; $("btnCsv").disabled=true;
+  $("calcTiles").innerHTML=""; $("charts").dataset.keys="";
+  rebuildTable(); drawAll();
+}
+$("btnStart").onclick = startSession;
+$("btnPause").onclick = pauseSession;
+$("btnReset").onclick = resetSession;
+
+/* ───────── CSV ───────── */
+function toCsv(){
+  const sep=$("sep").value, dec=$("dec").value;
+  const num = v => {
+    if(v==null||!isFinite(v)) return "";
+    let s = String(Number(v.toPrecision(9)));
+    if(dec===",") s=s.replace(".",",");
+    return s;
+  };
+  const esc = s => {
+    s=String(s);
+    return (s.includes(sep)||s.includes('"')||s.includes("\n")) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const first=S.records[0], last=S.records[S.records.length-1];
+  const head=[
+    "# Registrador H2 - electrolizador ESP32",
+    "# exportado: "+new Date().toISOString(),
+    "# inicio: "+(first?first.iso:"-"),
+    "# duracion_s: "+(last?last.t.toFixed(1):"0"),
+    "# muestras: "+S.records.length,
+    "# campo_corriente: "+(S.mapI||"-")+"  campo_voltaje: "+(S.mapV||"-"),
+    "# nota: "+($("note").value||"-"),
+    "# El ppm del MQ-8 es concentracion medida, no caudal: se registra sin transformar."
+  ];
+  const cols=["timestamp_iso","t_segundos",...S.keys,
+    "potencia_calc_W","carga_C","energia_J","energia_Wh","n_teorico_mol","vol_teorico_mL"];
+  const lines=[...head, cols.map(esc).join(sep)];
+  for(const r of S.records){
+    lines.push([
+      r.iso, num(r.t), ...S.keys.map(k=>num(r.data[k])),
+      num(r.P), num(r.Q), num(r.E), num(r.E/3600), num(r.n), num(r.vol)
+    ].join(sep));
+  }
+  return "﻿"+lines.join("\r\n")+"\r\n";
+}
+$("btnCsv").onclick = ()=>{
+  if(!S.records.length) return;
+  const d=new Date(), p=n=>String(n).padStart(2,"0");
+  const name=`ensayo_h2_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.csv`;
+  const blob=new Blob([toCsv()],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  S.dirty=false;
+};
+
+/* ───────── Bluetooth ───────── */
+$("btnConnect").onclick = async () => {
+  if(!navigator.bluetooth){ banner("Este navegador no soporta Web Bluetooth.","bad"); return; }
+  try{
+    setStatus("Buscando…","");
+    const dev = await navigator.bluetooth.requestDevice({
+      filters:[{services:[SERVICE_UUID]},{name:DEVICE_NAME}],
+      optionalServices:[SERVICE_UUID]
+    });
+    S.device=dev;
+    dev.addEventListener("gattserverdisconnected", onDisconnected);
+    setStatus("Conectando…","");
+    const server = await dev.gatt.connect();
+    const svc = await server.getPrimaryService(SERVICE_UUID);
+    const ch  = await svc.getCharacteristic(CHAR_TELEM);
+    S.char=ch; S.mode="ble";
+    const dv = new TextDecoder();
+    ch.addEventListener("characteristicvaluechanged", e => feed(dv.decode(e.target.value)));
+    await ch.startNotifications();
+    setStatus("Conectado · "+(dev.name||DEVICE_NAME),"on");
+    $("btnDisconnect").disabled=false; $("btnConnect").disabled=true; $("btnDemo").disabled=true;
+    banner("");
+  }catch(err){
+    setStatus("Desconectado","off");
+    const m = /NotFound/i.test(err.name) ? "No se encontró el dispositivo, o cancelaste la selección."
+            : /Security|NotAllowed/i.test(err.name) ? "Permiso denegado o la página no está en un contexto seguro (HTTPS o localhost)."
+            : err.message;
+    banner("<b>No se pudo conectar.</b> "+m,"bad");
+  }
+};
+function onDisconnected(){
+  S.char=null; S.mode=null; S.buffer="";
+  setStatus("Desconectado","off");
+  $("btnConnect").disabled=false; $("btnDisconnect").disabled=true; $("btnDemo").disabled=false;
+  banner("<b>Se perdió la conexión Bluetooth.</b> Los datos registrados siguen en memoria — puedes exportarlos y reconectar.","warn");
+}
+$("btnDisconnect").onclick = ()=>{
+  if(S.demoTimer){ clearInterval(S.demoTimer); S.demoTimer=null; }
+  if(S.device && S.device.gatt.connected) S.device.gatt.disconnect();
+  else onDisconnected();
+};
+
+/* ───────── modo demo (telemetría simulada, sin hardware) ───────── */
+$("btnDemo").onclick = ()=>{
+  if(S.demoTimer) return;
+  S.mode="demo"; let k=0;
+  setStatus("Modo demo (datos simulados)","demo");
+  $("btnDisconnect").disabled=false; $("btnConnect").disabled=true; $("btnDemo").disabled=true;
+  banner("<b>Modo demo activo.</b> Los valores son simulados, no vienen del ESP32. Sirve para probar la interfaz y la exportación CSV.","warn");
+  S.demoTimer = setInterval(()=>{
+    k++;
+    const v = 12 + Math.sin(k/18)*0.6 + (Math.random()-.5)*0.08;
+    const i = 1.8 + Math.sin(k/25)*0.35 + (Math.random()-.5)*0.05;
+    const obj = {
+      voltaje: +v.toFixed(3), corriente: +i.toFixed(3), potencia: +(v*i).toFixed(3),
+      ppm_h2: +(140 + k*1.4 + Math.random()*25).toFixed(1),
+      rs_ro: +(1.8 - k*0.004 + Math.random()*0.05).toFixed(3),
+      temp_c: +(24 + Math.random()*0.4).toFixed(2),
+      alarma: 0
+    };
+    // se entrega troceado a 20 bytes, igual que una notificación BLE sin MTU ampliada
+    const s = JSON.stringify(obj);
+    for(let p=0;p<s.length;p+=20) feed(s.slice(p,p+20));
+  }, 1000);
+};
+
+/* ───────── tema ───────── */
+$("btnTheme").onclick = ()=>{
+  const cur = document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", dark?"light":"dark");
+  $("charts").dataset.keys=""; drawAll();
+};
+
+/* ───────── arranque ───────── */
+(function init(){
+  if(!navigator.bluetooth){
+    banner("<b>Este navegador no soporta Web Bluetooth.</b> Usa Chrome o Edge en Android, Windows, macOS o Linux. "+
+      "Safari y cualquier navegador en iPhone/iPad no lo implementan. El <i>modo demo</i> sí funciona en cualquier navegador.","bad");
+  }else if(!window.isSecureContext){
+    banner("<b>Contexto no seguro.</b> Web Bluetooth exige HTTPS o localhost; abierta así, la conexión será rechazada.","bad");
+  }
+  window.addEventListener("beforeunload", e => {
+    if(S.dirty){ e.preventDefault(); e.returnValue=""; }
+  });
+})();
+</script>
+</body>
+</html>
